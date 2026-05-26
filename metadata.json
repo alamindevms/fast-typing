@@ -1,0 +1,6 @@
+{
+  "name": "Typing Master Professional",
+  "description": "An interactive typing trainer featuring personalized lessons, a typing speed test with AI custom prompt generation, statistical analytics tracking, real-time keyboard feedback, mechanical typewriter sounds, and a falling words arcade game.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
