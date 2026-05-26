@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { GoogleGenAI } from "@google/genai";
-import { Lesson, TestResult, TypingLevel } from "./types";
+import { TestResult, TypingLevel } from "./types";
 import { LESSONS, PRESET_TEXTS } from "./lessonsData";
-import { setVolume, setSoundType, getVolume, getSoundType, playKeySound, playChimeSound, playErrorSound } from "./utils/sound";
+import { setVolume, setSoundType, playKeySound, playChimeSound, playErrorSound } from "./utils/sound";
 
 import VirtualKeyboard from "./components/VirtualKeyboard";
 import FallingWordsGame from "./components/FallingWordsGame";
@@ -23,6 +23,8 @@ import {
   Clock,
   Settings,
   Flame,
+  Github,
+  Linkedin,
 } from "lucide-react";
 
 export default function App() {
@@ -704,18 +706,53 @@ export default function App() {
       </main>
 
       {/* Premium Visual Footer */}
-      <footer className="glass border-t border-white/5 mt-8 p-6 flex flex-col md:flex-row items-center justify-between gap-4 select-none relative z-10" id="app-footer">
-        <p className="text-slate-400 text-[10px] font-mono uppercase tracking-wider">
-          Typing Master AI • Certified Professional Touch Practice • 100% Client Sync
-        </p>
-        <div className="flex gap-4 text-slate-400 text-xs" id="footer-helpers-list">
-          <span className="font-semibold block text-[10px] uppercase font-mono tracking-widest text-slate-500">Fingers Mapping Cues:</span>
-          <div className="flex flex-wrap gap-2" id="finger-caps">
-            <span className="flex items-center gap-1 text-[9px] font-mono text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/10 shadow-sm">Pinky</span>
-            <span className="flex items-center gap-1 text-[9px] font-mono text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-xl border border-orange-500/10 shadow-sm">Ring</span>
-            <span className="flex items-center gap-1 text-[9px] font-mono text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-xl border border-yellow-500/10 shadow-sm">Middle</span>
-            <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/10 shadow-sm">Index</span>
-            <span className="flex items-center gap-1 text-[9px] font-mono text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/10 shadow-sm">Thumbs</span>
+      <footer className="glass border-t border-white/5 mt-8 p-5 flex flex-col md:flex-row items-center justify-between gap-4 select-none relative z-10" id="app-footer">
+        <div className="flex flex-col items-center md:items-start gap-1">
+          <p className="text-slate-400 text-[10px] font-mono uppercase tracking-wider">
+            Typing Master AI • Certified Professional Touch Practice • 100% Client Sync
+          </p>
+          <p className="text-slate-600 text-[9px] font-mono">
+            Built with ❤️ by <span className="text-purple-400 font-semibold">Alamin Hossain</span>
+          </p>
+        </div>
+
+        <div className="flex items-center gap-6">
+          {/* Social Links */}
+          <div className="flex items-center gap-2" id="social-links">
+            <a
+              id="link-github"
+              href="https://github.com/alamindevms"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="GitHub: alamindevms"
+              className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-white glass px-3 py-1.5 rounded-full border border-white/5 hover:border-purple-500/40 hover:bg-purple-500/10 transition-all duration-200 group"
+            >
+              <Github className="w-3.5 h-3.5 group-hover:text-purple-400 transition-colors" />
+              <span className="group-hover:text-purple-300 transition-colors">GitHub</span>
+            </a>
+            <a
+              id="link-linkedin"
+              href="https://linkedin.com/in/alaminhossainpro"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="LinkedIn: alaminhossainpro"
+              className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-white glass px-3 py-1.5 rounded-full border border-white/5 hover:border-blue-500/40 hover:bg-blue-500/10 transition-all duration-200 group"
+            >
+              <Linkedin className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
+              <span className="group-hover:text-blue-300 transition-colors">LinkedIn</span>
+            </a>
+          </div>
+
+          {/* Finger key legend */}
+          <div className="hidden md:flex gap-4 text-slate-400 text-xs" id="footer-helpers-list">
+            <span className="font-semibold block text-[10px] uppercase font-mono tracking-widest text-slate-500">Keys:</span>
+            <div className="flex flex-wrap gap-1.5" id="finger-caps">
+              <span className="flex items-center gap-1 text-[9px] font-mono text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/10">Pinky</span>
+              <span className="flex items-center gap-1 text-[9px] font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-lg border border-orange-500/10">Ring</span>
+              <span className="flex items-center gap-1 text-[9px] font-mono text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-lg border border-yellow-500/10">Middle</span>
+              <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/10">Index</span>
+              <span className="flex items-center gap-1 text-[9px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/10">Thumbs</span>
+            </div>
           </div>
         </div>
       </footer>
