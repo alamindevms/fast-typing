@@ -305,7 +305,18 @@ export default function App() {
       playChimeSound(); // success feedback sound
     } catch (err: any) {
       console.error(err);
-      setAiError(err.message || "An unexpected error occurred during Gemini prompt generation. Fallback presets will stand.");
+      const raw = (err?.message || err?.toString() || "").toLowerCase();
+      let friendlyMsg = "Failed to generate prompt. Please try again.";
+      if (raw.includes("429") || raw.includes("quota") || raw.includes("resource_exhausted") || raw.includes("rate")) {
+        friendlyMsg = "⏳ API rate limit reached. Please wait a moment and try again.";
+      } else if (raw.includes("api key") || raw.includes("api_key") || raw.includes("not configured") || raw.includes("unauthorized") || raw.includes("401")) {
+        friendlyMsg = "🔑 Gemini API key is missing or invalid. Check your settings.";
+      } else if (raw.includes("network") || raw.includes("fetch") || raw.includes("failed to fetch")) {
+        friendlyMsg = "🌐 Network error. Check your connection and try again.";
+      } else if (raw.includes("empty")) {
+        friendlyMsg = "No response from Gemini. Try a different topic.";
+      }
+      setAiError(friendlyMsg);
       playErrorSound();
     } finally {
       setIsGenerating(false);
