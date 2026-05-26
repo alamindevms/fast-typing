@@ -27,11 +27,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Vite app
+      - name: Build Vite app (frontend only for GitHub Pages)
         env:
           # Injected from GitHub repository secret: Settings → Secrets → Actions → VITE_GEMINI_API_KEY
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-        run: npm run build -- --mode production
+        # Only run the Vite frontend build — the Express server (server.ts) is not needed for static hosting
+        run: npx vite build
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
