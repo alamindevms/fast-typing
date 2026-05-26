@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { GoogleGenAI } from "@google/genai";
 import { Lesson, TestResult, TypingLevel } from "./types";
 import { LESSONS, PRESET_TEXTS } from "./lessonsData";
 import { setVolume, setSoundType, getVolume, getSoundType, playKeySound, playChimeSound, playErrorSound } from "./utils/sound";
@@ -260,7 +261,7 @@ export default function App() {
 
   const { text: typingTestText, catName: typingTestCatName } = getSpeedTestParagraph();
 
-  // Call Express API route to generate prompts using Gemini
+  // Call Gemini API directly from the client (for static GitHub Pages hosting)
   const handleGenerateAIChallenge = async () => {
     if (!aiTopic.trim()) {
       setAiError("Please supply a topic theme (e.g., 'Space battles', 'React hooks', 'Coffee Brewing').");
@@ -272,27 +273,37 @@ export default function App() {
     setGeneratedPromptText("");
 
     try {
-      const response = await fetch("/api/generate-prompt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: aiTopic.trim(), level: aiLevel }),
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
+      if (!apiKey) {
+        throw new Error("Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your environment.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+
+      let constraints = "standard vocabulary, simple punctuation, short words (mostly 3-6 letters). Make it extremely readable and cohesive.";
+      if (aiLevel === "medium") {
+        constraints = "moderate medical, tech, or historic terms, commas, capitals, and punctuation. Ensure a few longer words are included.";
+      } else if (aiLevel === "hard") {
+        constraints = "complex vocabulary, advanced coding snippets, numbers, rare capitals, semicolons, brackets, or other symbols. Keep it structurally challenging.";
+      }
+
+      const prompt = `Generate a single paragraph for a typing test about the topic: "${aiTopic.trim()}".\nInstructions:\n1. It MUST be suited for a typing exercise at level: "${aiLevel}" (use ${constraints}).\n2. It MUST be between 120 and 220 characters long.\n3. It must consist of standard English letters, numbers, and basic punctuation.\n4. Strictly avoid emojis, backticks, rare symbols, tabs, or newlines.\n5. Provide ONLY the text of the generated paragraph. Do not include any titles, markdown blocks, quotes around the paragraph, or introductions. Give me the raw string directly.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: prompt,
       });
 
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Network error. Failed to connect with Gemini API model.");
+      const text = response.text?.trim() || "";
+      if (!text) {
+        throw new Error("Received empty content from Gemini API.");
       }
 
-      const generatedStr = data.prompt;
-      if (generatedStr) {
-        setGeneratedPromptText(generatedStr);
-        playChimeSound(); // success feedback sound
-      } else {
-        throw new Error("Received empty generated prompt response from server.");
-      }
+      setGeneratedPromptText(text);
+      playChimeSound(); // success feedback sound
     } catch (err: any) {
       console.error(err);
-      setAiError(err.message || "An expected error occured during Gemini prompt generation. Fallback presets will stand.");
+      setAiError(err.message || "An unexpected error occurred during Gemini prompt generation. Fallback presets will stand.");
       playErrorSound();
     } finally {
       setIsGenerating(false);
