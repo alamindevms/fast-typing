@@ -19,8 +19,16 @@ export default function TypingCore({
   onFinish,
   onKeystroke,
 }: TypingCoreProps) {
-  // Parsing letters
-  const letters = text.split("");
+  // Parsing letters & Normalizing double curly quotes, smart apostrophes, and unusual spacing
+  const normalizeText = (raw: string): string => {
+    return raw
+      .replace(/[\u201c\u201d]/g, '"') // Curly double quotes
+      .replace(/[\u2018\u2019\u00b4]/g, "'") // Curly single quotes / apostrophes
+      .replace(/[\u2013\u2014]/g, "-") // En & em dashes
+      .replace(/\u00a0/g, " "); // Non-breaking space
+  };
+
+  const letters = normalizeText(text).split("");
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [typedLetters, setTypedLetters] = useState<{ [idx: number]: { correct: boolean; val: string } }>({});
@@ -135,10 +143,12 @@ export default function TypingCore({
       return;
     }
 
-    // Ignore secondary meta characters
-    if (key.length > 1 && key !== "Backspace") {
+    const expected = letters[currentIndex];
+
+    // Ignore secondary meta characters (let Enter pass if next is a newline)
+    if (key.length > 1 && key !== "Backspace" && !(key === "Enter" && expected === "\n")) {
       // Still trigger onKeystroke for highlight effect of Shifts or Caps
-      onKeystroke(e.code, letters[currentIndex] || "");
+      onKeystroke(e.code, expected || "");
       return;
     }
 
@@ -171,8 +181,7 @@ export default function TypingCore({
     }
 
     // Checking correct vs incorrect
-    const expected = letters[currentIndex];
-    const isCorrect = key === expected;
+    const isCorrect = key === expected || (key === "Enter" && expected === "\n");
 
     if (isCorrect) {
       playKeySound();
@@ -279,8 +288,8 @@ export default function TypingCore({
         id="typing-focus-board"
       >
         {/* Focusing Help Overlay */}
-        <div className="absolute inset-0 bg-[#0a0a14]/90 backdrop-blur-[6px] -webkit-backdrop-blur-[6px] flex items-center justify-center opacity-0 pointer-events-none group-focus:opacity-0 group-focus:pointer-events-none transition duration-150 select-none z-20" id="unfocused-overlay">
-          <span className="text-sm font-mono text-slate-300 animate-pulse glass px-5 py-2 rounded-2xl">
+        <div className="absolute inset-0 bg-[#05050f]/85 backdrop-blur-[5px] flex items-center justify-center opacity-100 group-focus:opacity-0 group-focus:pointer-events-none transition duration-150 select-none z-20" id="unfocused-overlay">
+          <span className="text-sm font-mono text-purple-300 animate-pulse glass px-6 py-2.5 rounded-2xl border border-purple-500/15 shadow-xl">
             💡 Click inside this block to focus typing
           </span>
         </div>
@@ -293,9 +302,9 @@ export default function TypingCore({
             
             let color = "letter-untyped"; // Default Untyped matching index.css
             if (state) {
-              color = state.correct ? "letter-typed" : "letter-error";
+              color = state.correct ? "letter-typed" : "letter-error font-bold";
             } else if (isCurrent) {
-              color = "letter-current font-semibold relative px-[1px] rounded-sm";
+              color = "letter-current font-bold relative px-[1.5px] rounded-sm text-purple-300";
             }
 
             return (
@@ -304,7 +313,18 @@ export default function TypingCore({
                 className={`${color} transition-colors duration-75`}
                 id={`char-${idx}`}
               >
-                {char === " " ? " " : char}
+                {char === " " ? (
+                  isCurrent ? (
+                    <span 
+                      className="inline-flex items-center justify-center align-middle mx-1 px-1.5 py-0.5 text-[11px] sm:text-xs font-sans tracking-normal font-bold lowercase rounded bg-purple-500/30 text-purple-300 border border-purple-500/50 shadow-[0_0_8px_rgba(168,85,247,0.25)] animate-pulse" 
+                      style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}
+                    >
+                      space ␣
+                    </span>
+                  ) : (
+                    state && !state.correct ? "␣" : " "
+                  )
+                ) : char}
               </span>
             );
           })}

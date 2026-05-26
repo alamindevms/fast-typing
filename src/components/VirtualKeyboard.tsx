@@ -118,7 +118,7 @@ export default function VirtualKeyboard({
       { key: "r-shift", display: "⇧ Shift", width: "w-20 sm:w-24 h-10 sm:h-12 grow" },
     ],
     [
-      { key: "space", display: "━━━━━━ Spacebar ━━━━━━", width: "w-full h-10 sm:h-12 max-w-[500px]" },
+      { key: "space", display: "Spacebar", width: "w-full h-10 sm:h-12 max-w-[500px]" },
     ],
   ];
 
@@ -127,10 +127,46 @@ export default function VirtualKeyboard({
     const act = activeKey?.toLowerCase();
     if (!act) return false;
     
+    // Check if the base key is actually pressed, or if the shifted version is
     if (keyDef === "space") return act === " " || act === "space";
-    if (keyDef === "shift") return act === "shift" || act === "shift-left";
-    if (keyDef === "r-shift") return act === "shift" || act === "shift-right";
-    return act === keyDef;
+    
+    // Shift key active states
+    if (keyDef === "shift") return act === "shift" || act === "shiftleft" || act === "shift-left";
+    if (keyDef === "r-shift") return act === "shift" || act === "shiftright" || act === "shift-right";
+    
+    // Key mapped checks for general keyboard layout key trigger
+    if (act === keyDef) return true;
+    
+    // Shifted symbol mappings to match original base keys
+    const shiftedMap: { [key: string]: string } = {
+      "~": "`",
+      "!": "1",
+      "@": "2",
+      "#": "3",
+      "$": "4",
+      "%": "5",
+      "^": "6",
+      "&": "7",
+      "*": "8",
+      "(": "9",
+      ")": "0",
+      "_": "-",
+      "+": "=",
+      "{": "[",
+      "}": "]",
+      "|": "\\",
+      ":": ";",
+      "\"": "'",
+      "<": ",",
+      ">": ".",
+      "?": "/"
+    };
+    
+    // If the currently active key maps to this keyDef
+    if (shiftedMap[act] === keyDef) return true;
+    
+    // Direct case-insensitive characters (e.g., lowercase vs uppercase matches uppercase keys)
+    return act === keyDef.toLowerCase();
   };
 
   const isKeyNext = (keyDef: string): boolean => {

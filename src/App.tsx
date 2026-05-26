@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { GoogleGenAI } from "@google/genai";
-import { TestResult, TypingLevel } from "./types";
+import { Lesson, TestResult, TypingLevel } from "./types";
 import { LESSONS, PRESET_TEXTS } from "./lessonsData";
-import { setVolume, setSoundType, playKeySound, playChimeSound, playErrorSound } from "./utils/sound";
+import { setVolume, setSoundType, getVolume, getSoundType, playKeySound, playChimeSound, playErrorSound } from "./utils/sound";
 
 import VirtualKeyboard from "./components/VirtualKeyboard";
 import FallingWordsGame from "./components/FallingWordsGame";
@@ -23,8 +22,6 @@ import {
   Clock,
   Settings,
   Flame,
-  Github,
-  Linkedin,
 } from "lucide-react";
 
 export default function App() {
@@ -33,6 +30,7 @@ export default function App() {
 
   // Keyboard and finger cues
   const [activePressedKey, setActivePressedKey] = useState<string>("");
+  const [nextCharToType, setNextCharToType] = useState<string>("");
   const [isKeyboardVisible, setIsKeyboardVisible] = useState<boolean>(true);
   const [isFingerGuideVisible, setIsFingerGuideVisible] = useState<boolean>(true);
 
@@ -96,6 +94,7 @@ export default function App() {
   // Keyboard active event listeners
   const captureKeyboardTrigger = (key: string, nextChar: string) => {
     setActivePressedKey(key);
+    setNextCharToType(nextChar);
     // automatically pop of key highlight for smooth click animations
     setTimeout(() => {
       setActivePressedKey((curr) => (curr === key ? "" : curr));
@@ -217,7 +216,7 @@ export default function App() {
             <div className="glass rounded-[32px] p-5 shadow-2xl" id="g-keyboard-panel">
               <VirtualKeyboard
                 activeKey={activePressedKey}
-                nextChar="" // updated by child event directly or passed via core triggers
+                nextChar={nextCharToType}
                 showFingers={isFingerGuideVisible}
               />
             </div>
@@ -263,7 +262,7 @@ export default function App() {
 
   const { text: typingTestText, catName: typingTestCatName } = getSpeedTestParagraph();
 
-  // Call Gemini API directly from the client (for static GitHub Pages hosting)
+  // Call Express API route to generate prompts using Gemini
   const handleGenerateAIChallenge = async () => {
     if (!aiTopic.trim()) {
       setAiError("Please supply a topic theme (e.g., 'Space battles', 'React hooks', 'Coffee Brewing').");
@@ -275,48 +274,27 @@ export default function App() {
     setGeneratedPromptText("");
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
-      if (!apiKey) {
-        throw new Error("Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your environment.");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-
-      let constraints = "standard vocabulary, simple punctuation, short words (mostly 3-6 letters). Make it extremely readable and cohesive.";
-      if (aiLevel === "medium") {
-        constraints = "moderate medical, tech, or historic terms, commas, capitals, and punctuation. Ensure a few longer words are included.";
-      } else if (aiLevel === "hard") {
-        constraints = "complex vocabulary, advanced coding snippets, numbers, rare capitals, semicolons, brackets, or other symbols. Keep it structurally challenging.";
-      }
-
-      const prompt = `Generate a single paragraph for a typing test about the topic: "${aiTopic.trim()}".\nInstructions:\n1. It MUST be suited for a typing exercise at level: "${aiLevel}" (use ${constraints}).\n2. It MUST be between 120 and 220 characters long.\n3. It must consist of standard English letters, numbers, and basic punctuation.\n4. Strictly avoid emojis, backticks, rare symbols, tabs, or newlines.\n5. Provide ONLY the text of the generated paragraph. Do not include any titles, markdown blocks, quotes around the paragraph, or introductions. Give me the raw string directly.`;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: prompt,
+      const response = await fetch("/api/generate-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: aiTopic.trim(), level: aiLevel }),
       });
 
-      const text = response.text?.trim() || "";
-      if (!text) {
-        throw new Error("Received empty content from Gemini API.");
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Network error. Failed to connect with Gemini API model.");
       }
 
-      setGeneratedPromptText(text);
-      playChimeSound(); // success feedback sound
+      const generatedStr = data.prompt;
+      if (generatedStr) {
+        setGeneratedPromptText(generatedStr);
+        playChimeSound(); // success feedback sound
+      } else {
+        throw new Error("Received empty generated prompt response from server.");
+      }
     } catch (err: any) {
       console.error(err);
-      const raw = (err?.message || err?.toString() || "").toLowerCase();
-      let friendlyMsg = "Failed to generate prompt. Please try again.";
-      if (raw.includes("429") || raw.includes("quota") || raw.includes("resource_exhausted") || raw.includes("rate")) {
-        friendlyMsg = "⏳ API rate limit reached. Please wait a moment and try again.";
-      } else if (raw.includes("api key") || raw.includes("api_key") || raw.includes("not configured") || raw.includes("unauthorized") || raw.includes("401")) {
-        friendlyMsg = "🔑 Gemini API key is missing or invalid. Check your settings.";
-      } else if (raw.includes("network") || raw.includes("fetch") || raw.includes("failed to fetch")) {
-        friendlyMsg = "🌐 Network error. Check your connection and try again.";
-      } else if (raw.includes("empty")) {
-        friendlyMsg = "No response from Gemini. Try a different topic.";
-      }
-      setAiError(friendlyMsg);
+      setAiError(err.message || "An expected error occured during Gemini prompt generation. Fallback presets will stand.");
       playErrorSound();
     } finally {
       setIsGenerating(false);
@@ -540,7 +518,7 @@ export default function App() {
             <div className="bg-slate-900/50 border border-slate-805 rounded-3xl p-4 sm:p-5" id="assessment-keyboard-panel">
               <VirtualKeyboard
                 activeKey={activePressedKey}
-                nextChar=""
+                nextChar={nextCharToType}
                 showFingers={isFingerGuideVisible}
               />
             </div>
@@ -717,53 +695,18 @@ export default function App() {
       </main>
 
       {/* Premium Visual Footer */}
-      <footer className="glass border-t border-white/5 mt-8 p-5 flex flex-col md:flex-row items-center justify-between gap-4 select-none relative z-10" id="app-footer">
-        <div className="flex flex-col items-center md:items-start gap-1">
-          <p className="text-slate-400 text-[10px] font-mono uppercase tracking-wider">
-            Typing Master AI • Certified Professional Touch Practice • 100% Client Sync
-          </p>
-          <p className="text-slate-600 text-[9px] font-mono">
-            Built with ❤️ by <span className="text-purple-400 font-semibold">Alamin Hossain</span>
-          </p>
-        </div>
-
-        <div className="flex items-center gap-6">
-          {/* Social Links */}
-          <div className="flex items-center gap-2" id="social-links">
-            <a
-              id="link-github"
-              href="https://github.com/alamindevms"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="GitHub: alamindevms"
-              className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-white glass px-3 py-1.5 rounded-full border border-white/5 hover:border-purple-500/40 hover:bg-purple-500/10 transition-all duration-200 group"
-            >
-              <Github className="w-3.5 h-3.5 group-hover:text-purple-400 transition-colors" />
-              <span className="group-hover:text-purple-300 transition-colors">GitHub</span>
-            </a>
-            <a
-              id="link-linkedin"
-              href="https://linkedin.com/in/alaminhossainpro"
-              target="_blank"
-              rel="noopener noreferrer"
-              title="LinkedIn: alaminhossainpro"
-              className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 hover:text-white glass px-3 py-1.5 rounded-full border border-white/5 hover:border-blue-500/40 hover:bg-blue-500/10 transition-all duration-200 group"
-            >
-              <Linkedin className="w-3.5 h-3.5 group-hover:text-blue-400 transition-colors" />
-              <span className="group-hover:text-blue-300 transition-colors">LinkedIn</span>
-            </a>
-          </div>
-
-          {/* Finger key legend */}
-          <div className="hidden md:flex gap-4 text-slate-400 text-xs" id="footer-helpers-list">
-            <span className="font-semibold block text-[10px] uppercase font-mono tracking-widest text-slate-500">Keys:</span>
-            <div className="flex flex-wrap gap-1.5" id="finger-caps">
-              <span className="flex items-center gap-1 text-[9px] font-mono text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-lg border border-rose-500/10">Pinky</span>
-              <span className="flex items-center gap-1 text-[9px] font-mono text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-lg border border-orange-500/10">Ring</span>
-              <span className="flex items-center gap-1 text-[9px] font-mono text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-lg border border-yellow-500/10">Middle</span>
-              <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/10">Index</span>
-              <span className="flex items-center gap-1 text-[9px] font-mono text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/10">Thumbs</span>
-            </div>
+      <footer className="glass border-t border-white/5 mt-8 p-6 flex flex-col md:flex-row items-center justify-between gap-4 select-none relative z-10" id="app-footer">
+        <p className="text-slate-400 text-[10px] font-mono uppercase tracking-wider">
+          Typing Master AI • Certified Professional Touch Practice • 100% Client Sync
+        </p>
+        <div className="flex gap-4 text-slate-400 text-xs" id="footer-helpers-list">
+          <span className="font-semibold block text-[10px] uppercase font-mono tracking-widest text-slate-500">Fingers Mapping Cues:</span>
+          <div className="flex flex-wrap gap-2" id="finger-caps">
+            <span className="flex items-center gap-1 text-[9px] font-mono text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/10 shadow-sm">Pinky</span>
+            <span className="flex items-center gap-1 text-[9px] font-mono text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded-xl border border-orange-500/10 shadow-sm">Ring</span>
+            <span className="flex items-center gap-1 text-[9px] font-mono text-yellow-400 bg-yellow-500/10 px-2.5 py-1 rounded-xl border border-yellow-500/10 shadow-sm">Middle</span>
+            <span className="flex items-center gap-1 text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/10 shadow-sm">Index</span>
+            <span className="flex items-center gap-1 text-[9px] font-mono text-sky-400 bg-sky-500/10 px-2.5 py-1 rounded-xl border border-sky-500/10 shadow-sm">Thumbs</span>
           </div>
         </div>
       </footer>
